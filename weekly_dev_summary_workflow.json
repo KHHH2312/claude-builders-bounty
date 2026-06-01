@@ -25,16 +25,8 @@
               "value": "claude-builders-bounty/claude-builders-bounty"
             },
             {
-              "name": "DISCORD_WEBHOOK_URL",
-              "value": "https://discord.com/api/webhooks/your_webhook_here"
-            },
-            {
               "name": "SUMMARY_LANGUAGE",
               "value": "EN"
-            },
-            {
-              "name": "ANTHROPIC_API_KEY",
-              "value": "your_anthropic_api_key_here"
             }
           ]
         },
@@ -66,7 +58,7 @@
     },
     {
       "parameters": {
-        "url": "={{'https://api.github.com/repos/' + $json['GITHUB_REPO'] + '/commits?since=' + $json['sinceDate']}}",
+        "url": "={{'https://api.github.com/repos/' + $('Config').first().json['GITHUB_REPO'] + '/commits?since=' + $('Date & Time').first().json['sinceDate']}}",
         "options": {
           "headers": {
             "User-Agent": "n8n-weekly-summary"
@@ -100,7 +92,7 @@
     },
     {
       "parameters": {
-        "url": "={{'https://api.github.com/repos/' + $('Config').first().json['GITHUB_REPO'] + '/pulls?state=closed'}}",
+        "url": "={{'https://api.github.com/repos/' + $('Config').first().json['GITHUB_REPO'] + '/pulls?state=closed&sort=updated&direction=desc&per_page=100'}}",
         "options": {
           "headers": {
             "User-Agent": "n8n-weekly-summary"
@@ -117,7 +109,7 @@
     },
     {
       "parameters": {
-        "jsCode": "/**\n * Aggregates GitHub data into a narrative prompt for Claude.\n * Follows Development Guidelines: No magic numbers, robust validation, standard docs.\n */\nconst MAX_COMMITS_TO_INCLUDE = 50;\nconst MAX_ISSUES_TO_INCLUDE = 20;\nconst MAX_PRS_TO_INCLUDE = 20;\n\n// Validate inputs from previous nodes\nconst commitsData = $('HTTP Commits').all() || [];\nconst issuesData = $('HTTP Issues').all() || [];\nconst prsData = $('HTTP PRs').all() || [];\nconst config = $('Config').first().json || {};\n\nconst repoName = config.GITHUB_REPO || 'unknown/repo';\nconst language = config.SUMMARY_LANGUAGE || 'EN';\n\n// Extract payloads assuming HTTP nodes returned JSON arrays\nconst commits = (commitsData[0] && commitsData[0].json && Array.isArray(commitsData[0].json)) ? commitsData[0].json : [];\nconst issues = (issuesData[0] && issuesData[0].json && Array.isArray(issuesData[0].json)) ? issuesData[0].json : [];\nconst prs = (prsData[0] && prsData[0].json && Array.isArray(prsData[0].json)) ? prsData[0].json : [];\n\n// Thorough Validation: Ensure we actually process valid subsets without duplicating\nconst validCommits = commits.filter(c => c && c.commit && c.commit.message).slice(0, MAX_COMMITS_TO_INCLUDE);\nconst validIssues = issues.filter(i => i && i.title && !i.pull_request).slice(0, MAX_ISSUES_TO_INCLUDE);\nconst validPrs = prs.filter(p => p && p.title && p.merged_at).slice(0, MAX_PRS_TO_INCLUDE);\n\nconst commitList = validCommits.map(c => `- ${c.commit.message} (by ${c.commit.author ? c.commit.author.name : 'Unknown'})`).join('\\n');\nconst issueList = validIssues.map(i => `- ${i.title} (${i.state})`).join('\\n');\nconst prList = validPrs.map(p => `- ${p.title} (merged by ${p.user ? p.user.login : 'Unknown'})`).join('\\n');\n\nconst prompt = `You are a technical lead. Write a weekly narrative summary for the GitHub repository: ${repoName}.\nPlease write the summary in the following language: ${language}.\nFocus on the progress made, features added, and issues resolved. Keep it engaging and concise.\n\n### Recent Commits\n${commitList || 'No recent commits.'}\n\n### Closed Issues\n${issueList || 'No closed issues.'}\n\n### Merged PRs\n${prList || 'No merged PRs.'}`;\n\nreturn [{\n    json: {\n        prompt: prompt,\n        discordWebhookUrl: config.DISCORD_WEBHOOK_URL,\n        anthropicApiKey: config.ANTHROPIC_API_KEY\n    }\n}];"
+        "jsCode": "/**\n * Aggregates GitHub data into a narrative prompt for Claude.\n * Follows Development Guidelines: No magic numbers, robust validation, standard docs.\n */\nconst MAX_COMMITS_TO_INCLUDE = 50;\nconst MAX_ISSUES_TO_INCLUDE = 20;\nconst MAX_PRS_TO_INCLUDE = 20;\n\n// Validate inputs from previous nodes\nconst commitsData = $('HTTP Commits').all() || [];\nconst issuesData = $('HTTP Issues').all() || [];\nconst prsData = $('HTTP PRs').all() || [];\nconst config = $('Config').first().json || {};\n\nconst repoName = config.GITHUB_REPO || 'unknown/repo';\nconst language = config.SUMMARY_LANGUAGE || 'EN';\n\n// Extract payloads assuming HTTP nodes returned JSON arrays\nconst commits = (commitsData[0] && commitsData[0].json && Array.isArray(commitsData[0].json)) ? commitsData[0].json : [];\nconst issues = (issuesData[0] && issuesData[0].json && Array.isArray(issuesData[0].json)) ? issuesData[0].json : [];\nconst prs = (prsData[0] && prsData[0].json && Array.isArray(prsData[0].json)) ? prsData[0].json : [];\n\nconst sinceDate = new Date($('Date & Time').first().json.sinceDate);\n\n// Thorough Validation: Ensure we actually process valid subsets without duplicating\nconst validCommits = commits.filter(c => c && c.commit && c.commit.message).slice(0, MAX_COMMITS_TO_INCLUDE);\nconst validIssues = issues.filter(i => i && i.title && !i.pull_request).slice(0, MAX_ISSUES_TO_INCLUDE);\nconst validPrs = prs.filter(p => p && p.title && p.merged_at && new Date(p.merged_at) >= sinceDate).slice(0, MAX_PRS_TO_INCLUDE);\n\nconst commitList = validCommits.map(c => `- ${c.commit.message} (by ${c.commit.author ? c.commit.author.name : 'Unknown'})`).join('\\n');\nconst issueList = validIssues.map(i => `- ${i.title} (${i.state})`).join('\\n');\nconst prList = validPrs.map(p => `- ${p.title} (authored by ${p.user ? p.user.login : 'Unknown'})`).join('\\n');\n\nconst prompt = `You are a technical lead. Write a weekly narrative summary for the GitHub repository: ${repoName}.\nPlease write the summary in the following language: ${language}.\nFocus on the progress made, features added, and issues resolved. Keep it engaging and concise.\n\n### Recent Commits\n${commitList || 'No recent commits.'}\n\n### Closed Issues\n${issueList || 'No closed issues.'}\n\n### Merged PRs\n${prList || 'No merged PRs.'}`;\n\nreturn [{\n    json: {\n        prompt: prompt\n    }\n}];"
       },
       "name": "Aggregate Data",
       "type": "n8n-nodes-base.code",
@@ -136,7 +128,7 @@
           "parameters": [
             {
               "name": "x-api-key",
-              "value": "={{$json['anthropicApiKey']}}"
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
             },
             {
               "name": "anthropic-version",
@@ -164,7 +156,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$json['discordWebhookUrl']}}",
+        "url": "={{$env.DISCORD_WEBHOOK_URL}}",
         "sendBody": true,
         "options": {},
         "specifyBody": "json",
