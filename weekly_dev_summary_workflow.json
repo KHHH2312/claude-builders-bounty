@@ -168,7 +168,7 @@
         "sendBody": true,
         "options": {},
         "specifyBody": "json",
-        "jsonBody": "{\n  \"content\": \"**Weekly Dev Summary**\\n\\n{{$json['content'][0]['text']}}\"\n}"
+        "jsonBody": "{\n  \"content\": \"**Weekly Dev Summary**\\n\\n{{$json['content'][0]['text'].substring(0, 1950)}}\"\n}"
       },
       "name": "Discord Webhook",
       "type": "n8n-nodes-base.httpRequest",
