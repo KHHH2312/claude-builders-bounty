@@ -68,8 +68,8 @@
     },
     {
       "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const commits = $items(\"Fetch Commits\").map(i => i.json);\nconst prs = $items(\"Fetch Merged PRs\").map(i => i.json);\nconst lang = $items(\"Config Variables\")[0].json.language;\n\nreturn { \n  summaryData: JSON.stringify({ \n    commits: commits.slice(0, 20), \n    prs: prs.slice(0, 10) \n  }),\n  lang: lang,\n  webhookUrl: $items(\"Config Variables\")[0].json.webhook_url\n};"
+        "mode": "runOnceForAllItems",
+        "jsCode": "const commits = $items(\"Fetch Commits\").map(i => i.json);\nconst prs = $items(\"Fetch Merged PRs\").map(i => i.json);\nconst lang = $items(\"Config Variables\")[0].json.language;\n\nreturn [{\n  json: {\n    summaryData: JSON.stringify({ \n      commits: commits.slice(0, 20), \n      prs: prs.slice(0, 10) \n    }),\n    lang: lang,\n    webhookUrl: $items(\"Config Variables\")[0].json.webhook_url\n  }\n}];"
       },
       "name": "Aggregate Data",
       "type": "n8n-nodes-base.code",
